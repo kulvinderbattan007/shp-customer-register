@@ -6,8 +6,15 @@ const path = require("path");
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// app.use(cors());
+app.use(
+  cors({
+    origin: "*", // allow all (for testing)
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  })
+);
+app.use(express.json()); 
 
 // Serve embed.js
 app.use(express.static(path.join(__dirname, "public")));
@@ -109,7 +116,7 @@ app.post("/form/submit", async (req, res) => {
     instagram,
     website,
     gst
-  } = req.body;
+  } = req.body; 
 
   try {
     const SHOP_URL = `https://${process.env.SHOPIFY_STORE}/admin/api/2024-01/graphql.json`;
@@ -270,8 +277,191 @@ addressResult = addressData.address;
   }
 });
 
+app.get("/shopify/customers", async (req, res) => { 
+  try {
+    const response = await require("axios").post(
+      `https://${process.env.SHOPIFY_STORE}/admin/api/2024-01/graphql.json`,
+      {
+        query: `
+          query CustomerList {
+            customers(first: 50) {
+              nodes {
+                id
+                firstName
+                lastName
+                defaultEmailAddress {
+                  emailAddress
+                  marketingState
+                }
+                defaultPhoneNumber {
+                  phoneNumber
+                  marketingState
+                  marketingCollectedFrom
+                }
+                createdAt
+                updatedAt
+                numberOfOrders
+                state
+                amountSpent {
+                  amount
+                  currencyCode
+                }
+                verifiedEmail
+                taxExempt
+                tags
+                addresses {
+                  id
+                  firstName
+                  lastName
+                  address1
+                  city
+                  province
+                  country
+                  zip
+                  phone
+                  name
+                  provinceCode
+                  countryCodeV2
+                }
+                defaultAddress {
+                  id
+                  address1
+                  city
+                  province
+                  country
+                  zip
+                  phone
+                  provinceCode
+                  countryCodeV2
+                }
+              }
+            }
+          }
+        `
+      },
+      {
+        headers: {
+          "X-Shopify-Access-Token": process.env.SHOPIFY_ACCESS_TOKEN,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    console.log("🟢 Customers Response:", response.data);
+
+    res.json(response.data);
+
+  } catch (error) {
+    console.error("❌ Shopify Error:", error.response?.data || error.message);
+
+    res.status(500).json({
+      success: false,
+      error: error.response?.data || error.message
+    });
+  }
+});
 
 
+
+app.get("/shopify/customers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 🔥 Convert to Shopify GID
+    const customerGID = `gid://shopify/Customer/${id}`;
+
+    const response = await require("axios").post(
+      `https://${process.env.SHOPIFY_STORE}/admin/api/2024-01/graphql.json`,
+      {
+        query: `
+          query getCustomer($id: ID!) {
+            customer(id: $id) {
+              id
+              firstName
+              lastName
+              defaultEmailAddress {
+                emailAddress
+                marketingState
+              }
+              defaultPhoneNumber {
+                phoneNumber
+                marketingState
+                marketingCollectedFrom
+              }
+              createdAt
+              updatedAt
+              numberOfOrders
+              state
+              amountSpent {
+                amount
+                currencyCode
+              }
+              verifiedEmail
+              taxExempt
+              tags
+              addresses {
+                id
+                firstName
+                lastName
+                address1
+                city
+                province
+                country
+                zip
+                phone
+                name
+                provinceCode
+                countryCodeV2
+              }
+              defaultAddress {
+                id
+                address1
+                city
+                province
+                country
+                zip
+                phone
+                provinceCode
+                countryCodeV2
+              }
+            }
+          }
+        `,
+        variables: {
+          id: customerGID
+        }
+      },
+      {
+        headers: {
+          "X-Shopify-Access-Token": process.env.SHOPIFY_ACCESS_TOKEN,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    const customer = response.data?.data?.customer;
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      customer
+    });
+
+  } catch (error) {
+    console.error("❌ Shopify Error:", error.response?.data || error.message);
+
+    res.status(500).json({
+      success: false,
+      error: error.response?.data || error.message
+    });
+  }
+});
 
 app.get("/shopify/products", async (req, res) => {
   try {
