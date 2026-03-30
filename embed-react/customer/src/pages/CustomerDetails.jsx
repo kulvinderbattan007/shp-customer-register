@@ -7,6 +7,9 @@ function CustomerDetails() {
   const [customer, setCustomer] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
 
+
+
+
   useEffect(() => {
     fetch(`http://localhost:3000/shopify/customers/${id}`)
       .then((res) => res.json())
@@ -240,16 +243,38 @@ const tagStyle = {
   fontSize: "12px"
 };
 
+function Editmodal({ id, onClose }) {
+alert(id);
+}
+
 function AddressModal({ customerId, onClose }) {
   const menuItems = [
-    { label: "edit address", onClick: () => alert("edit address") },
-    { label: "Set as default", onClick: () => alert("Set as default") },
-    { label: "Delete", onClick: () => alert("Delete") }];
+    { label: "edit address", onClick: (addr) => {
+    setSelectedAddress(addr);
+    setFormData({
+      country: addr.country || "India",
+      firstName: addr.first_name || "",
+      lastName: addr.last_name || "",
+      company: addr.company || "",
+      address1: addr.address1 || "",
+      address2: addr.address2 || "",
+      city: addr.city || "",
+      state: addr.province || "",
+      zip: addr.zip || "",
+      phone: addr.phone || "",
+    });
+  } },
+    { label: "Set as default", onClick: (id) => alert(id+' '+"Set as default") },
+    { label: "Delete", onClick: (id) => alert(id+' '+"Delete") }];
 
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
+  const [activeMenu, setActiveMenu] = useState(null);
   const { id } = useParams();
+
+    const [selectedAddress, setSelectedAddress] = useState(null);
+const [formData, setFormData] = useState(null);
 
   useEffect(() => {
     fetch(`http://localhost:3000/shopify/customers/${customerId}`)
@@ -291,7 +316,7 @@ function AddressModal({ customerId, onClose }) {
 
 
               <button
-                onClick={() => setShowMenu(!showMenu)}
+               onClick={() => setActiveMenu(activeMenu === i ? null : i)}
                 style={{
                   border: "none",
                   background: "#eee",
@@ -303,7 +328,7 @@ function AddressModal({ customerId, onClose }) {
                 ⋯
               </button>
               {/* 🔻 Dropdown */}
-              {showMenu && (
+                 {activeMenu === i && (
         <div style={{
           position: "relative",
           right: "10px",
@@ -318,7 +343,7 @@ function AddressModal({ customerId, onClose }) {
             <div
               key={i}
               onClick={() => {
-                item.onClick();
+                item.onClick(addr);
                 setShowMenu(false);
               }}
               style={{
@@ -343,9 +368,109 @@ function AddressModal({ customerId, onClose }) {
           ))
         )}
       </div>
+
+      {selectedAddress && (
+  <div style={styles.overlay}>
+    <div style={styles.modal}>
+
+      {/* Header */}
+      <div style={styles.header}>
+        <h2>Edit shipping address</h2>
+        <button onClick={() => setSelectedAddress(null)}>✕</button>
+      </div>
+
+      {/* Form */}
+      <div style={styles.form}>
+        
+        <label>Country/region</label>
+        <select name="country" value={formData.country} onChange={handleChange}>
+          <option>India</option>
+          <option>United States</option>
+        </select>
+
+        <div style={styles.row}>
+          <input name="firstName" value={formData.firstName} onChange={handleChange} placeholder="First name" />
+          <input name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Last name" />
+        </div>
+
+        <input name="company" value={formData.company} onChange={handleChange} placeholder="Company" />
+        <input name="address1" value={formData.address1} onChange={handleChange} placeholder="Address" />
+        <input name="address2" value={formData.address2} onChange={handleChange} placeholder="Apartment, suite..." />
+
+        <div style={styles.row}>
+          <input name="city" value={formData.city} onChange={handleChange} placeholder="City" />
+          <input name="state" value={formData.state} onChange={handleChange} placeholder="State" />
+          <input name="zip" value={formData.zip} onChange={handleChange} placeholder="PIN code" />
+        </div>
+
+        <input name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone" />
+
+      </div>
+
+      {/* Footer */}
+      <div style={styles.footer}>
+        <button onClick={() => setSelectedAddress(null)}>Cancel</button>
+        <button
+          onClick={() => {
+            console.log("Updated:", formData);
+            setSelectedAddress(null);
+          }}
+        >
+          Save
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
     </div>
   );
 }
+
+const styles = {
+  overlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    background: "rgba(0,0,0,0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modal: {
+    background: "#fff",
+    width: "600px",
+    borderRadius: "12px",
+    padding: "20px",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+  },
+  row: {
+    display: "flex",
+    gap: "10px",
+  },
+  footer: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "10px",
+    marginTop: "20px",
+  },
+};
+const handleChange = (e) => {
+  setFormData({
+    ...formData,
+    [e.target.name]: e.target.value,
+  });
+};
 
 const modalStyles = {
   overlay: {
